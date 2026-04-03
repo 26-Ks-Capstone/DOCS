@@ -122,3 +122,46 @@ CREATE TABLE reviews (
 );
 
 CREATE INDEX idx_reviews_tour_id ON reviews(tour_id);
+
+--여행지 기본 정보 (지도 핀 및 목록 출력용)
+CREATE TABLE travel_places (
+                               place_id INT PRIMARY KEY,              -- contentid
+                               type_id INT,                           -- contenttypeid
+                               title VARCHAR(255) NOT NULL,           -- title
+                               addr1 VARCHAR(500),                    -- addr1
+                               addr2 VARCHAR(255),                    -- addr2
+                               zipcode VARCHAR(20),                   -- zipcode
+                               location POINT,                        -- mapx, mapy를 하나로 묶은 좌표 (경도, 위도)
+                               mlevel INT,                            -- mlevel
+                               first_image TEXT,                      -- firstimage
+                               first_image2 TEXT                      -- firstimage2
+);
+
+--여행지 상세 설명 (개요 및 외부 링크)
+CREATE TABLE travel_descriptions (
+                                     place_id INT PRIMARY KEY REFERENCES travel_places(place_id),
+                                     homepage TEXT,                         -- homepage (HTML 태그 포함 원문)
+                                     overview TEXT                          -- overview (한류 정보 포함 전체 설명)
+);
+
+--여행지 운영 및 요금 정보 (이용 조건 전용)
+CREATE TABLE travel_fees (
+                             place_id INT PRIMARY KEY REFERENCES travel_places(place_id),
+                             use_fee TEXT,                          -- 이용 요금 안내 (예: 정보 없음, 무료 등)
+                             use_time TEXT                          -- 이용 시간 (예: 매년 6월~8월)
+);
+
+-- pgvector 확장 활성화
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- RAG 검색용 벡터 테이블
+CREATE TABLE travel_vectors (
+    vector_id SERIAL PRIMARY KEY,
+    place_id INT REFERENCES travel_places(place_id),
+    content_chunk TEXT,                    -- 검색 대상 텍스트 (명칭 + 주소 + 요금 + 개요 합본)
+    embedding VECTOR(768)                  -- Gemini text-embedding-004 모델 기준
+);
+
+-- 코사인 유사도 검색을 위한 인덱스 (속도 향상)
+CREATE INDEX ON travel_vectors USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
