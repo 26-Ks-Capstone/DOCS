@@ -95,22 +95,25 @@
         ```json
         {
           "status": "success",
-          "data": {
-            "title": "제주도 2박 3일 자연 힐링 여행",
-            "region": "제주특별자치도",
-            "start_date": "2026-03-20",
-            "end_date": "2026-03-22",
-            "total_cost": 500000,
-            "generated_courses": [
-              {
-                "day_number": 1,
-                "start_time": "09:00",
-                "duration_minutes": 120,
-                "category_type": "자연",
-                "description": "비자림 숨은 산책로 트레킹"
-              }
-            ]
-          }
+          "data" : {
+              "title": "여행 제목",
+              "region": "부산광역시",
+              "start_date": "2026-04-05",
+              "end_date": "2026-04-07",
+              "generated_courses": [
+                {
+                  "day_number": 1,
+                  "start_time": "09:00",
+                  "duration_minutes": 120,
+                  "place": "태종대",
+                  "latitude": 35.0531,
+                  "longitude": 129.0878,
+                  "category_type": ["자연", "명소"],
+                  "operating_hours": "09:00 - 18:00 (월요일 휴무)",
+                  "description": "아름다운 자연경관과 해안을 즐길 수 있는 산책 코스입니다."
+                }
+              ]
+            }
         }
         ```
 ### 3.2. AI 생성 일정 저장
