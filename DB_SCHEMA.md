@@ -28,36 +28,37 @@ CREATE TABLE destinations (
 -- 공간 데이터(GIS) 조회를 위한 GIST 인덱스
 CREATE INDEX idx_destinations_location ON destinations USING GIST (location);
 
--- 3. AI 여행 플래너 마스터 (itineraries)
+-- 1. 상위 여행 일정 테이블 (참고용)
 CREATE TABLE itineraries (
-    itinerary_id BIGSERIAL PRIMARY KEY,                 -- [cite: 16]
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE, -- [cite: 17]
-    title VARCHAR(255) NOT NULL,                        -- [cite: 18]
-    region VARCHAR(100),                                -- [cite: 18]
-    start_date DATE,                                    -- [cite: 18]
-    end_date DATE,                                      -- [cite: 18]
-    total_cost BIGINT DEFAULT 0,                        -- [cite: 18]
-    course_count INT DEFAULT 0                          -- [cite: 18]
+                             itinerary_id BIGSERIAL PRIMARY KEY,
+                             title VARCHAR(255) NOT NULL,       -- "부모님과 함께하는 1박 2일..."
+                             region VARCHAR(100),               -- "부산광역시"
+                             start_date DATE,                   -- "2026-04-06"
+                             end_date DATE,                     -- "2026-04-07"
+                             created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_itineraries_user_id ON itineraries(user_id);
+-- PostGIS 확장 프로그램 활성화
+CREATE EXTENSION postgis;
 
--- 4. AI 여행 플래너 상세 코스 (itinerary_details)
+-- 2. AI 여행 플래너 상세 코스 (itinerary_details)
 CREATE TABLE itinerary_details (
-    detail_id BIGSERIAL PRIMARY KEY,                    -- [cite: 20]
-    itinerary_id BIGINT REFERENCES itineraries(itinerary_id) ON DELETE CASCADE, -- [cite: 21]
-    day_number INT NOT NULL,                            -- [cite: 22]
-    start_time TIME,                                    -- [cite: 22]
-    duration_minutes INT,                               -- [cite: 22]
-    category_type VARCHAR(50),                          -- [cite: 22]
-    destination_id BIGINT REFERENCES destinations(destination_id) ON DELETE SET NULL, -- Nullable [cite: 23]
-    description TEXT,                                   -- [cite: 24]
-    sort_order INT NOT NULL,                            -- [cite: 24]
-    location GEOMETRY(Point, 4326)                      -- [GIS] 커스텀 장소 공간 데이터 (Nullable) [cite: 25, 26]
+                                   detail_id BIGSERIAL PRIMARY KEY,
+                                   user_id uuid REFERENCES users(user_id),
+                                   itinerary_id BIGINT REFERENCES itineraries(itinerary_id) ON DELETE CASCADE,
+                                   day_number INT NOT NULL,
+                                   start_time TIME,
+                                   duration_minutes INT,
+                                   place_name VARCHAR(255) NOT NULL,
+                                   category_type TEXT[], -- 배열 타입
+                                   operating_hours VARCHAR(255),
+                                   description TEXT,
+                                   place_id BIGINT REFERENCES travel_places(place_id) ON DELETE SET NULL,
+                                   sort_order INT NOT NULL,
+                                   latitude DOUBLE PRECISION,  -- 위도 (예: 35.157...)
+                                   longitude DOUBLE PRECISION  -- 경도 (예: 129.182...)
 );
-
 CREATE INDEX idx_itinerary_details_itinerary_id ON itinerary_details(itinerary_id);
-CREATE INDEX idx_itinerary_details_location ON itinerary_details USING GIST (location);
 
 -- 5. 로컬 가이드 투어 상품 (guide_tours)
 CREATE TABLE guide_tours (
