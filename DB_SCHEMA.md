@@ -15,15 +15,42 @@ CREATE TABLE public.users (
 );
 CREATE UNIQUE INDEX users_email_key ON users USING btree (email);
 
--- users 테이블의 is_guide가 true일 때만 이 테이블에 데이터가 존재해야 함.
+-- 가이드 기본 프로필 정보 (회원가입 후 가이드 등록 1~3단계 데이터)
 CREATE TABLE guider_info (
     guide_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-    introduction TEXT, -- 가이드 자기소개
-    certification_score NUMERIC(5, 2) DEFAULT 0.0, -- 기획서에 명시된 자격증/전문성 점수
-    review_score NUMERIC(3, 2) DEFAULT 0.0, -- 리뷰 평점
+    
+    -- [1단계] 활동 지역 (복수 선택)
+    -- 예: '{"서울", "부산", "여수", "제주도"}'
+    active_regions VARCHAR(50)[] NOT NULL, 
+    
+    -- [2단계] 언어 & 경력
+    -- 예: '{"한국어", "English"}'
+    available_languages VARCHAR(50)[] NOT NULL,
+    
+    -- 예: '신입 (경력 없음)', '1~2년', '3~5년' 등 (공통 코드로 관리해도 좋고 단순 문자열도 무방)
+    experience_period VARCHAR(20) NOT NULL,
+    
+    -- 어학 성적은 사용자가 '추가' 버튼을 눌러 무한정 넣을 수 있으므로 JSONB가 제격임!
+    -- 예: [{"exam": "TOEIC", "score": "900"}, {"exam": "JLPT", "score": "N1"}]
+    language_scores JSONB, 
+    
+    -- [3단계] 소개 & 전문 분야
+    introduction TEXT, -- 자기소개 (어플리케이션 단에서 500자 제한)
+    
+    -- 예: '{"맛집 투어", "자연 탐방"}'
+    specialties VARCHAR(50)[] NOT NULL,
+    
+    -- [시스템 관리 필드]
+    certification_score NUMERIC(5, 2) DEFAULT 0.0, -- 자격증/전문성 점수 (별도 관리)
+    review_score NUMERIC(3, 2) DEFAULT 0.0, -- 누적 리뷰 평점
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 인덱스 추가 (배열 내 특정 값을 검색하기 위한 GIN 인덱스)
+-- "부산 지역에서 활동하는 가이드", "맛집 투어 전문 가이드" 검색 시 성능 극대화
+CREATE INDEX idx_guider_active_regions ON guider_info USING GIN (active_regions);
+CREATE INDEX idx_guider_specialties ON guider_info USING GIN (specialties);
 
 /***********************************************************
  * 2. 여행지 마스터 데이터 (Travel Places & Details)
