@@ -15,6 +15,15 @@ CREATE TABLE public.users (
 );
 CREATE UNIQUE INDEX users_email_key ON users USING btree (email);
 
+-- users 테이블의 is_guide가 true일 때만 이 테이블에 데이터가 존재해야 함.
+CREATE TABLE guider_info (
+    guide_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    introduction TEXT, -- 가이드 자기소개
+    certification_score NUMERIC(5, 2) DEFAULT 0.0, -- 기획서에 명시된 자격증/전문성 점수
+    review_score NUMERIC(3, 2) DEFAULT 0.0, -- 리뷰 평점
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 /***********************************************************
  * 2. 여행지 마스터 데이터 (Travel Places & Details)
@@ -95,3 +104,45 @@ CREATE TABLE public.itinerary_details (
     longitude        double precision,                  -- 지도 표시용 경도
     description      text                               -- 사용자 메모/설명
 );
+
+
+/***********************************************************
+ * 4. 가이드 정보 데이터(가이더가 등록한 가이드 데이터)
+ ***********************************************************/
+-- 가이드 서비스(투어) 정보 테이블
+CREATE TABLE guide_service_info (
+    service_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    guide_id UUID NOT NULL REFERENCES guider_info(guide_id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL, -- 투어 제목
+    description TEXT NOT NULL, -- 투어 설명
+    region VARCHAR(100) NOT NULL, -- 활동 지역 (예: 부산 서면)
+    duration_minutes INTEGER NOT NULL, -- 소요 시간 (분 단위 저장 권장)
+    max_capacity INTEGER NOT NULL, -- 최대 인원
+    price_per_person NUMERIC(10, 2) NOT NULL, -- 인당 요금
+    has_car BOOLEAN DEFAULT FALSE, -- 자차 안내 여부
+    available_languages VARCHAR(50)[] NOT NULL, -- 사용 가능 언어 (PostgreSQL 배열 활용)
+    meeting_point VARCHAR(255) NOT NULL, -- 접선 장소
+    meeting_point_desc TEXT, -- 접선 장소 상세 설명
+    included_items JSONB, -- 포함 사항 (식사, 교통비 등 - 확장성을 위해 JSONB)
+    excluded_items JSONB, -- 불포함 사항
+    related_materials JSONB, -- 관련 자료 (S3 URL 등 배열 형태의 JSONB)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 읽기 성능을 위한 인덱스 추가 (지역별 검색이 잦을 것이므로)
+CREATE INDEX idx_guide_service_region ON guide_service_info(region);
+
+-- 가이드 서비스 세부 일정 테이블 (guide_service_info와 1:N 관계)
+CREATE TABLE guide_service_info_detail (
+    detail_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    service_id UUID NOT NULL REFERENCES guide_service_info(service_id) ON DELETE CASCADE,
+    sequence_order INTEGER NOT NULL, -- 일정 순서 (프론트엔드에서 렌더링 시 보장용)
+    start_time TIME NOT NULL, -- 시작 시간 (예: 10:00)
+    end_time TIME NOT NULL, -- 종료 시간 (예: 11:30)
+    location VARCHAR(255) NOT NULL, -- 장소
+    content TEXT NOT NULL, -- 일정 내용
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_guide_service_detail_service_id ON guide_service_info_detail(service_id);
